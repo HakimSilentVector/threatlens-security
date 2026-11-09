@@ -1,0 +1,14 @@
+# Normalize line endings: store everything as LF in the repo, regardless of
+# the OS that committed it. This is the fix for the Windows CRLF-vs-LF noise
+# that otherwise fills diffs with invisible line-ending churn. It travels
+# with the repo, so every contributor (and CI) is consistent.
+* text=auto eol=lf
+
+# Binary assets: never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

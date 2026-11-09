@@ -1,0 +1,131 @@
+---
+import Base from '../layouts/Base.astro';
+
+// TODO(you): replace each project `href` with the exact repo URL once confirmed.
+// Left pointing at the profile so there are zero dead links on day one.
+const projects = [
+  {
+    title: 'Wazuh SIEM Home Lab',
+    desc: 'Self-built detection lab: Wazuh manager + agents, log pipelines, and custom rules mapped to MITRE ATT&CK. Python tooling for alert triage.',
+    tags: ['Wazuh', 'SIEM', 'MITRE ATT&CK', 'Python'],
+    href: 'https://github.com/HakimSilentVector',
+  },
+  {
+    title: 'Content Trust Platform',
+    desc: 'FastAPI service that analyzes writing for authenticity signals. CI-disciplined security-engineering project deployed on Render.',
+    tags: ['FastAPI', 'Python', 'CI/CD', 'AppSec'],
+    href: 'https://github.com/HakimSilentVector',
+  },
+  {
+    title: 'Audio-Deepfake Defense Lab',
+    desc: 'Defensive research into voice-cloning detection, built under a documented rules-of-engagement charter with safety-first design.',
+    tags: ['Detection', 'Research', 'Defense'],
+    href: 'https://github.com/HakimSilentVector',
+  },
+];
+---
+
+<Base>
+  <!-- HERO -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
+      <p class="eyebrow">SOC Analyst &middot; Detection &amp; Incident Response</p>
+      <h1 id="hero-title">
+        I build, break, and defend &mdash; then document how.
+      </h1>
+      <p class="lead">
+        I&rsquo;m Mahfut Abdi (<span class="mono">ZeroDayHakim</span>). I&rsquo;m moving into
+        blue-team security operations: detection engineering, threat hunting, and
+        incident response. This site is itself a security artifact &mdash; hardened
+        headers, strict CSP, and a documented writeup of every choice.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#projects">View projects</a>
+        <a class="btn btn-ghost" href="https://github.com/HakimSilentVector"
+          rel="noopener">GitHub &#8599;</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section id="projects" aria-labelledby="projects-title">
+    <div class="wrap">
+      <p class="eyebrow">Selected work</p>
+      <h2 id="projects-title">Projects &amp; labs</h2>
+      <div class="grid">
+        {
+          projects.map((p) => (
+            <article class="card">
+              <div class="tags">
+                {p.tags.map((t) => (
+                  <span class="tag">{t}</span>
+                ))}
+              </div>
+              <h3>{p.title}</h3>
+              <p>{p.desc}</p>
+              <a class="card-link" href={p.href} rel="noopener">
+                View on GitHub &#8599;
+              </a>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- WRITEUPS -->
+  <section id="writeups" aria-labelledby="writeups-title">
+    <div class="wrap">
+      <p class="eyebrow">Technical writing</p>
+      <h2 id="writeups-title">Writeups</h2>
+      <div class="prose">
+        <p>
+          Detection walkthroughs, incident investigations, and the
+          <strong>Hardening Notes</strong> for this very site &mdash; documenting
+          the CSP, HSTS, and email-authentication decisions &mdash; land here.
+          This section is wired for Markdown/MDX content as the next build step.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" aria-labelledby="about-title">
+    <div class="wrap">
+      <p class="eyebrow">Background</p>
+      <h2 id="about-title">About</h2>
+      <div class="prose">
+        <p>
+          I spent five years running humanitarian programs in high-stakes,
+          resource-constrained environments &mdash; coordinating teams, managing
+          risk, and documenting everything under pressure. Those instincts
+          transfer directly to a SOC: triage, evidence discipline, and clear
+          incident communication.
+        </p>
+        <p>
+          I hold the <strong>Google Cybersecurity Professional Certificate</strong>,
+          am preparing for <strong>CompTIA Security+</strong>, and study graduate
+          computer science through the CU Boulder MS-CS pathway. I learn by
+          building &mdash; home labs, detection rules, and automation &mdash; not
+          by memorizing.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" aria-labelledby="contact-title">
+    <div class="wrap">
+      <p class="eyebrow">Get in touch</p>
+      <h2 id="contact-title">Contact</h2>
+      <div class="contact-row">
+        <a href="mailto:abdi@threatlenssec.com" rel="noopener"
+          >abdi@threatlenssec.com</a>
+        <a href="https://www.linkedin.com/in/mahfut-abdi-60568330a" rel="noopener"
+          >LinkedIn &#8599;</a>
+        <a href="https://github.com/HakimSilentVector" rel="noopener"
+          >GitHub &#8599;</a>
+      </div>
+    </div>
+  </section>
+</Base>

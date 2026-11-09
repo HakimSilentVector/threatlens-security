@@ -1,0 +1,5 @@
+# threatlenssec.com
+User-agent: *
+Allow: /
+
+Sitemap: https://threatlenssec.com/sitemap-index.xml
