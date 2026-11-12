@@ -80,14 +80,26 @@ const projects = [
     <div class="wrap">
       <p class="eyebrow">Technical writing</p>
       <h2 id="writeups-title">Writeups</h2>
-      <div class="prose">
-        <p>
-          Detection walkthroughs, incident investigations, and the <strong>Hardening Notes</strong> for this
-          very site &mdash; documenting
-          the CSP, HSTS, and email-authentication decisions &mdash; land here.
-          This section is wired for Markdown/MDX content as the next build step.
-        </p>
+      <div class="grid">
+        <article class="card">
+          <div class="tags">
+            <span class="tag">CSP</span>
+            <span class="tag">HSTS</span>
+            <span class="tag">SPF/DKIM/DMARC</span>
+            <span class="tag">CI/CD</span>
+          </div>
+          <h3>Hardening Notes: this site</h3>
+          <p>
+            Every security decision behind threatlenssec.com &mdash; the strict CSP,
+            transport security, email authentication, and the risks I consciously
+            accepted &mdash; with the scan evidence to back each one.
+          </p>
+          <a class="card-link" href="/writeups/hardening-notes/">Read the writeup &rarr;</a>
+        </article>
       </div>
+      <p class="writeups-more">
+        More detection walkthroughs and incident investigations land here as I publish them.
+      </p>
     </div>
   </section>
 

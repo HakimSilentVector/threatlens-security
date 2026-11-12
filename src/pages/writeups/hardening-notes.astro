@@ -1,0 +1,147 @@
+---
+import Base from '../../layouts/Base.astro';
+
+const title = 'Hardening Notes: threatlenssec.com — Threatlens Security';
+const description =
+  'A full account of the security decisions behind threatlenssec.com: strict CSP, transport security, email authentication, supply-chain discipline, and the risks I consciously accepted — with scan evidence for each.';
+---
+
+<Base title={title} description={description}>
+  <article class="writeup">
+    <div class="wrap writeup-body">
+      <a class="back" href="/#writeups">&larr; Back to Threatlens Security</a>
+
+      <p class="eyebrow">Hardening Notes</p>
+      <h1>Building a portfolio site as a security artifact</h1>
+
+      <p class="writeup-meta">Mahfut Abdi (ZeroDayHakim) &middot; November 2026 &middot; Astro + Cloudflare Pages</p>
+
+      <p>This site exists to do two jobs at once: route people to my work, and <strong>be a piece of that work</strong>. A security practitioner&rsquo;s portfolio that scores a B on a header scan undercuts its own message. So I treated the site as a system to be hardened and measured, and I wrote down every decision &mdash; including the ones where I chose <em>not</em> to act, and why. That last part matters more than the green checkmarks: knowing which risks to accept, and documenting the reasoning, is the job.</p>
+
+      <h2>Threat model and definition of done</h2>
+      <p>This is a fully public, static, brand-and-portfolio site. It holds no user accounts, no secrets, no authenticated endpoints, and no personal data beyond a public contact address. The realistic threats are therefore: cross-site scripting via injected content, clickjacking, transport downgrade or interception, MIME-sniffing, feature abuse, and &mdash; because the domain sends real email &mdash; spoofing of <code>@threatlenssec.com</code>.</p>
+      <p>&ldquo;Done&rdquo; was defined up front as measurable targets, not vibes:</p>
+      <ul>
+        <li><strong>A+</strong> on securityheaders.com</li>
+        <li><strong>A+</strong> on the Mozilla HTTP Observatory</li>
+        <li><strong>Lighthouse &ge; 95</strong> across Performance, Accessibility, Best Practices, and SEO</li>
+        <li>Full email authentication: <strong>SPF, DKIM, and DMARC</strong></li>
+      </ul>
+
+      <h2>Stack choice: attack surface first</h2>
+      <p>The single biggest security decision was made before a line of code: <strong>static site, no CMS.</strong> I built with <a href="https://astro.build" rel="noopener">Astro</a> compiled to static HTML and hosted on Cloudflare Pages. The deliberate rejection was WordPress &mdash; not out of dislike, but because a database-backed CMS with a plugin ecosystem is a standing attack surface (authenticated admin panel, server-side execution, third-party plugin CVEs, a permanent patch treadmill).</p>
+      <div class="writeup-table-wrap">
+        <table>
+          <thead>
+            <tr><th>Property</th><th>Static (chosen)</th><th>CMS (rejected)</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Server runtime</td><td>None &mdash; just files at the edge</td><td>App/DB process to exploit</td></tr>
+            <tr><td>Admin login</td><td>None exposed</td><td>Public, brute-forceable</td></tr>
+            <tr><td>Runtime dependency CVEs</td><td>Zero (nothing runs)</td><td>Core + every plugin</td></tr>
+            <tr><td>Patch burden</td><td>Rebuild from source</td><td>Continuous</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>You cannot exploit a server that is not running. A static site collapses most of the web&rsquo;s common attack classes down to a single question: what headers does the edge send, and what is in the HTML.</p>
+
+      <h2>Content Security Policy: the A+ maker</h2>
+      <p>The hardest grade to earn &mdash; and the one most sites fail &mdash; is a strict CSP. My policy denies everything by default and re-allows only same-origin resources, with <strong>no <code>unsafe-inline</code> and no <code>unsafe-eval</code> anywhere</strong>:</p>
+      <pre><code>Content-Security-Policy:
+  default-src 'none';
+  script-src 'self'; style-src 'self';
+  img-src 'self' data:; font-src 'self';
+  connect-src 'self'; manifest-src 'self';
+  base-uri 'none'; form-action 'none';
+  frame-ancestors 'none'; object-src 'none';
+  upgrade-insecure-requests</code></pre>
+      <p><code>default-src 'none'</code> is the posture: nothing loads unless a later directive explicitly permits it. The reason most sites fall back to <code>unsafe-inline</code> is convenience &mdash; inline style blocks and script tags &ldquo;just work.&rdquo; But <code>unsafe-inline</code> is exactly what makes injected markup executable, so allowing it defeats the purpose of CSP against XSS.</p>
+      <p>To avoid it, I engineered the build to emit <strong>zero inline anything</strong>. Astro is configured with <code>inlineStylesheets: 'never'</code> so all CSS ships as an external, hashed file under <code>style-src 'self'</code>; there is no client-side JavaScript at all. Every build runs an automated check that greps the compiled HTML for inline scripts, inline styles, and <code>style=</code> attributes, and fails if any appear. The tradeoff is real &mdash; you give up the convenience of dropping in an inline snippet &mdash; but the payoff is a CSP with no holes.</p>
+
+      <h2>Transport security (HSTS)</h2>
+      <pre><code>Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</code></pre>
+      <p>Two years, all subdomains, and the <code>preload</code> directive. This forces HTTPS and defends against SSL-stripping downgrade attacks. One deliberate boundary: sending the <code>preload</code> directive is not the same as submitting the domain to the browser <strong>preload list</strong> at hstspreload.org. I have <strong>not</strong> submitted, and that is intentional &mdash; preload-list inclusion is a slow-to-reverse commitment that requires every current and future subdomain to serve valid HTTPS indefinitely. The header is reversible; the list is effectively not. I will submit only once the subdomain story is settled. <em>Status: accepted, pending.</em></p>
+
+      <h2>Clickjacking, sniffing, referrer, and features</h2>
+      <ul>
+        <li><code>X-Frame-Options: DENY</code> plus CSP <code>frame-ancestors 'none'</code> &mdash; the page cannot be framed, which defeats clickjacking.</li>
+        <li><code>X-Content-Type-Options: nosniff</code> &mdash; browsers must honor declared content types instead of guessing, closing MIME-confusion attacks.</li>
+        <li><code>Referrer-Policy: strict-origin-when-cross-origin</code> &mdash; limits referrer leakage to other sites.</li>
+        <li><code>Permissions-Policy</code> &mdash; every powerful feature (camera, microphone, geolocation, USB, and the rest) is denied, because a brochure site needs none of them. If the page is ever compromised, it still cannot reach for the webcam.</li>
+        <li><code>Cross-Origin-Opener-Policy</code> and <code>Cross-Origin-Resource-Policy</code> set to <code>same-origin</code> for cross-origin isolation.</li>
+      </ul>
+
+      <h2>Email authentication: SPF, DKIM, DMARC</h2>
+      <p>The domain sends real mail through Google Workspace, so unauthenticated mail is a spoofing risk. SPF and DKIM were already provisioned by Workspace; the gap was DMARC, which ties them together and tells receivers what to do on failure.</p>
+      <ul>
+        <li><strong>SPF:</strong> <code>v=spf1 include:_spf.google.com ~all</code> &mdash; a single record (duplicates silently break SPF), authorizing Google and soft-failing everything else.</li>
+        <li><strong>DKIM:</strong> a 2048-bit RSA key published at <code>google._domainkey</code>, so outbound mail is cryptographically signed.</li>
+        <li><strong>DMARC:</strong> deployed in <strong>monitor mode first</strong> &mdash; <code>v=DMARC1; p=none; rua=...</code>.</li>
+      </ul>
+      <p>The DMARC rollout is deliberately staged, because jumping straight to enforcement is how people silently destroy their own email deliverability:</p>
+      <div class="writeup-table-wrap">
+        <table>
+          <thead>
+            <tr><th>Stage</th><th>Policy</th><th>Gate to advance</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1. Monitor</td><td><code>p=none</code></td><td>Collect aggregate reports; confirm legitimate mail aligns on SPF/DKIM</td></tr>
+            <tr><td>2. Quarantine</td><td><code>p=quarantine</code></td><td>Reports clean over a sustained window</td></tr>
+            <tr><td>3. Reject</td><td><code>p=reject</code></td><td>No legitimate sources failing</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>You enforce based on evidence from the reports, not on hope. That discipline is the entire point.</p>
+
+      <h2>Supply chain and delivery</h2>
+      <p>The site deploys through a Git-connected pipeline: a push to <code>main</code> triggers Cloudflare to build from source and publish to the edge. Several choices there are security choices:</p>
+      <ul>
+        <li><strong>Least-privilege integrations.</strong> Both the GitHub CLI and the Cloudflare Pages GitHub app were scoped to <em>only</em> this one repository, not the whole account. A compromise of either is contained to a single public repo.</li>
+        <li><strong>Reproducible builds.</strong> The Node version is pinned via <code>NODE_VERSION</code> and dependencies are locked with <code>package-lock.json</code>, so the edge builds the exact toolchain I verified locally &mdash; not whatever drifts in later.</li>
+        <li><strong>Verified tooling.</strong> Local tools were installed through a signed package manager that validates installer hashes before execution &mdash; integrity checking on the supply chain, not blind downloads.</li>
+        <li><strong>Commit OPSEC.</strong> Commits are authored with GitHub&rsquo;s privacy (noreply) address, so my real email is not harvestable from public commit history.</li>
+        <li><strong>Secret hygiene.</strong> The repo is public by design; a <code>.gitignore</code> blocks the usual offenders (<code>.env</code>, keys), and no real secret ever enters it. Deploy configuration lives in the host, not the source.</li>
+      </ul>
+
+      <h2>Verification evidence</h2>
+      <p>Claims are worth what you can prove. Current measured results:</p>
+      <div class="writeup-table-wrap">
+        <table>
+          <thead>
+            <tr><th>Check</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>securityheaders.com</td><td><span class="status-ok">A+</span> &mdash; all six headers present</td></tr>
+            <tr><td>Mozilla HTTP Observatory</td><td><span class="status-ok">A+</span> &mdash; 140/100, 12/12 tests</td></tr>
+            <tr><td>Lighthouse (Performance)</td><td><span class="status-ok">100</span></td></tr>
+            <tr><td>Lighthouse (Accessibility)</td><td><span class="status-ok">100</span></td></tr>
+            <tr><td>Lighthouse (Best Practices)</td><td><span class="status-ok">100</span></td></tr>
+            <tr><td>Lighthouse (SEO)</td><td><span class="status-ok">100</span></td></tr>
+            <tr><td>Email authentication</td><td><span class="status-ok">SPF + DKIM + DMARC</span> (DMARC in monitoring)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Accepted risks and deferred work</h2>
+      <p>Mature security is not a wall of green &mdash; it is a documented set of decisions. These are the items I know about and chose to accept or defer, with the reasoning on record so the choice is auditable later.</p>
+      <div class="writeup-table-wrap">
+        <table>
+          <thead>
+            <tr><th>Item</th><th>Decision &amp; rationale</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>access-control-allow-origin: *</code></td><td>Set by the CDN by default. Acceptable here because the site is fully public with no credentialed endpoints and nothing non-public to read &mdash; there is no resource to protect behind CORS.</td><td><span class="status-hold">Accepted</span></td></tr>
+            <tr><td>HSTS preload-list submission</td><td>The header carries the <code>preload</code> directive, but the domain is not on the browser list. Near-irreversible commitment; deferred until the subdomain story is final.</td><td><span class="status-hold">Deferred</span></td></tr>
+            <tr><td>Cross-Origin-Embedder-Policy</td><td>Not set. Would complete full cross-origin isolation for bonus credit; safe to add since the site is 100% same-origin. Pure upside, not yet applied.</td><td><span class="status-hold">Planned</span></td></tr>
+            <tr><td>DMARC enforcement</td><td>Currently <code>p=none</code>. Advancing to quarantine, then reject, only after aggregate reports confirm legitimate mail aligns.</td><td><span class="status-hold">In progress</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>What this demonstrates</h2>
+      <p>The point was never the letter grades &mdash; those are a side effect. The point is the method: define measurable targets, engineer toward them instead of bolting controls on afterward, verify with independent tools, and document every decision including the risks I accepted and why. That is how I work a system, and this site is the smallest honest proof of it.</p>
+
+      <p class="writeup-source"><a href="https://github.com/HakimSilentVector/threatlens-security" rel="noopener">Source on GitHub &rarr;</a></p>
+    </div>
+  </article>
+</Base>
