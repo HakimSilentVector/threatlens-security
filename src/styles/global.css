@@ -97,6 +97,11 @@ a:focus-visible {
 .brand .mark {
   color: var(--accent);
 }
+.brand-mark {
+  width: 1.7rem;
+  height: 1.7rem;
+  flex: none;
+}
 .nav-links {
   display: flex;
   gap: 1.25rem;
